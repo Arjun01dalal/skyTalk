@@ -1,0 +1,1903 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Chat application API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: auth
+  - name: users
+  - name: conversations
+  - name: messages
+  - name: calls
+  - name: uploads
+  - name: stats
+  - name: support
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user account (role user)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in; refresh token set as httpOnly cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/otp/request:
+    post:
+      operationId: requestOtp
+      tags: [auth]
+      summary: Request a one-time code for mobile signup/login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpRequestInput"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid mobile number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/otp/verify:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify a one-time code; logs in existing users or returns a signup token for new ones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyInput"
+      responses:
+        "200":
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpVerifyResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Incorrect code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/otp/signup:
+    post:
+      operationId: completeOtpSignup
+      tags: [auth]
+      summary: Complete mobile signup with name after OTP verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpSignupInput"
+      responses:
+        "201":
+          description: Account created and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Signup token invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update the current user's profile (name, avatar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Exchange refresh token cookie for a new access token
+      responses:
+        "200":
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the current user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+              x-body-name: ChangePasswordBody
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout and revoke refresh token
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the currently authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users visible to the current user (role-filtered)
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /users/search:
+    get:
+      operationId: searchUsers
+      tags: [users]
+      summary: Search users by name, email, mobile number or employee code
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: staffOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Matching users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /groups:
+    post:
+      operationId: createGroup
+      tags: [groups]
+      summary: Create a group conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupInput"
+      responses:
+        "201":
+          description: Created group conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /groups/{id}:
+    patch:
+      operationId: updateGroup
+      tags: [groups]
+      summary: Update a group's title or icon (creator or admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGroupInput"
+      responses:
+        "200":
+          description: Updated group conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /groups/{id}/members:
+    post:
+      operationId: addGroupMember
+      tags: [groups]
+      summary: Add a member to a group (creator or admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddGroupMemberInput"
+      responses:
+        "200":
+          description: Updated group conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /groups/{id}/members/{userId}:
+    delete:
+      operationId: removeGroupMember
+      tags: [groups]
+      summary: Remove a member from a group (creator, admin, or self-leave)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated group conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List the current user's conversations with last message and unread count
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: createConversation
+      tags: [conversations]
+      summary: Get or create a one-to-one conversation with another user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "200":
+          description: Conversation (existing or newly created)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List messages in a conversation (oldest first). Returns the latest page by default; pass `before` to load older messages.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: before
+          in: query
+          required: false
+          description: Only return messages with an id lower than this (cursor for loading older history)
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Page size (default 50, max 100)
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Created message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /conversations/{id}/read:
+    post:
+      operationId: markConversationRead
+      tags: [messages]
+      summary: Mark all messages from the other participant as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /e2ee/keys:
+    post:
+      operationId: publishE2eeKeys
+      tags: [e2ee]
+      summary: Publish this user's public key bundle (identity, signed prekey, one-time prekeys)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/E2eePublishKeysInput"
+      responses:
+        "200":
+          description: Key status after publish
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/E2eeKeyStatus"
+    get:
+      operationId: getE2eeKeyStatus
+      tags: [e2ee]
+      summary: Get this user's published key status and remaining one-time prekey count
+      responses:
+        "200":
+          description: Key status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/E2eeKeyStatus"
+  /e2ee/bundles:
+    get:
+      operationId: getE2eeBundles
+      tags: [e2ee]
+      summary: Fetch prekey bundles for users (consumes one one-time prekey per user)
+      parameters:
+        - name: userIds
+          in: query
+          required: true
+          description: Comma-separated user ids
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bundles for users that have published keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/E2eeBundle"
+  /uploads:
+    post:
+      operationId: uploadFile
+      tags: [uploads]
+      summary: Upload an image or file attachment
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FileUploadInput"
+      responses:
+        "201":
+          description: Uploaded file info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadedFile"
+  /calls:
+    get:
+      operationId: listCalls
+      tags: [calls]
+      summary: List the current user's call history (newest first)
+      responses:
+        "200":
+          description: Calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Call"
+  /admin/conversations:
+    get:
+      operationId: adminListConversations
+      tags: [admin]
+      summary: List every conversation in the system (admin only)
+      responses:
+        "200":
+          description: All conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminConversation"
+  /admin/conversations/{id}/messages:
+    get:
+      operationId: adminListMessages
+      tags: [admin]
+      summary: Full message history of any conversation (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+  /admin/calls:
+    get:
+      operationId: adminListCalls
+      tags: [admin]
+      summary: List every call in the system (admin only)
+      responses:
+        "200":
+          description: All calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Call"
+  /support-categories:
+    get:
+      operationId: listSupportCategories
+      tags: [support]
+      summary: List active support categories (any authenticated user)
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportCategory"
+  /admin/support-categories:
+    get:
+      operationId: adminListSupportCategories
+      tags: [support]
+      summary: List all support categories (admin only)
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportCategory"
+    post:
+      operationId: createSupportCategory
+      tags: [support]
+      summary: Create a support category (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertSupportCategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportCategory"
+  /admin/support-categories/{id}:
+    put:
+      operationId: updateSupportCategory
+      tags: [support]
+      summary: Update a support category (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertSupportCategoryInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportCategory"
+    delete:
+      operationId: deleteSupportCategory
+      tags: [support]
+      summary: Delete a support category (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /admin/ai-settings:
+    get:
+      operationId: getAiSettings
+      tags: [support]
+      summary: Get AI settings (admin only)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSettings"
+    put:
+      operationId: updateAiSettings
+      tags: [support]
+      summary: Update AI settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiSettingsInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSettings"
+  /support-phone:
+    get:
+      operationId: getSupportPhone
+      tags: [support]
+      summary: Get the configured support phone number (any authenticated user)
+      responses:
+        "200":
+          description: Support phone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportPhone"
+  /message-templates:
+    get:
+      operationId: listMessageTemplates
+      tags: [support]
+      summary: List quick-reply templates (staff only)
+      responses:
+        "200":
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MessageTemplate"
+  /admin/message-templates:
+    post:
+      operationId: createMessageTemplate
+      tags: [support]
+      summary: Create a quick-reply template (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertMessageTemplateInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageTemplate"
+  /admin/message-templates/{id}:
+    put:
+      operationId: updateMessageTemplate
+      tags: [support]
+      summary: Update a quick-reply template (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertMessageTemplateInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageTemplate"
+    delete:
+      operationId: deleteMessageTemplate
+      tags: [support]
+      summary: Delete a quick-reply template (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /conversations/{id}/select-category:
+    post:
+      operationId: selectConversationCategory
+      tags: [support]
+      summary: Select a support category (or custom issue) to start the AI flow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectCategoryInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /conversations/{id}/escalate:
+    post:
+      operationId: escalateConversation
+      tags: [support]
+      summary: Escalate the conversation to a human agent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalateInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /conversations/{id}/escalate-to-admin:
+    post:
+      operationId: escalateConversationToAdmin
+      tags: [support]
+      summary: Flag the conversation for a direct admin reply (agents only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalateInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /admin/conversations/{id}/reply:
+    post:
+      operationId: adminReplyConversation
+      tags: [admin]
+      summary: Admin sends a message into any conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Created message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /conversations/{id}/resolve:
+    post:
+      operationId: resolveConversation
+      tags: [conversations]
+      summary: Mark a conversation as resolved (staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resolved conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /conversations/{id}/language:
+    post:
+      operationId: setConversationLanguage
+      tags: [support]
+      summary: Change the customer language of a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetLanguageInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /conversations/{id}/end:
+    post:
+      operationId: endConversation
+      tags: [conversations]
+      summary: End the chat (participant or admin) — sends the closing note and resolves it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ended conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /sla/settings:
+    get:
+      operationId: getSlaSettings
+      tags: [sla]
+      summary: Current SLA time limits (staff only)
+      responses:
+        "200":
+          description: SLA settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaSettings"
+  /admin/sla-settings:
+    put:
+      operationId: updateSlaSettings
+      tags: [sla]
+      summary: Update SLA time limits (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlaSettingsInput"
+              x-body-name: UpdateSlaSettingsBody
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaSettings"
+  /admin/sla-report:
+    get:
+      operationId: getSlaReport
+      tags: [sla]
+      summary: SLA compliance report (admin only)
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaReport"
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: Archived chat tickets (admin all, agent own, customer own)
+      responses:
+        "200":
+          description: Tickets, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+  /tickets/{id}/messages:
+    get:
+      operationId: listTicketMessages
+      tags: [tickets]
+      summary: Full transcript of one archived ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Messages in the ticket, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "404":
+          description: Ticket not found
+  /tickets/{id}/calls:
+    get:
+      operationId: listTicketCalls
+      tags: [tickets]
+      summary: Calls made during one archived ticket's chat window
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Calls in the ticket window, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Call"
+        "404":
+          description: Ticket not found
+  /stats/summary:
+    get:
+      operationId: getStatsSummary
+      tags: [stats]
+      summary: Dashboard summary stats (admin only)
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsSummary"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    Ticket:
+      type: object
+      required:
+        [id, ticketNo, conversationId, customerId, customerName, messageCount, closedAt]
+      properties:
+        id: { type: integer }
+        ticketNo: { type: string }
+        conversationId: { type: integer }
+        customerId: { type: integer }
+        customerName: { type: string }
+        agentId: { type: integer, nullable: true }
+        agentName: { type: string, nullable: true }
+        categoryTitle: { type: string, nullable: true }
+        messageCount: { type: integer }
+        openedAt: { type: string, format: date-time, nullable: true }
+        closedAt: { type: string, format: date-time }
+    RegisterInput:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        mobile:
+          type: string
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    OtpRequestInput:
+      type: object
+      required: [mobile]
+      properties:
+        mobile:
+          type: string
+          minLength: 7
+    OtpVerifyInput:
+      type: object
+      required: [mobile, otp]
+      properties:
+        mobile:
+          type: string
+          minLength: 7
+        otp:
+          type: string
+          minLength: 4
+          maxLength: 8
+    OtpVerifyResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [existing, new]
+        accessToken:
+          type: ["string", "null"]
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+        signupToken:
+          type: ["string", "null"]
+    OtpSignupInput:
+      type: object
+      required: [signupToken, name]
+      properties:
+        signupToken:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        avatarUrl:
+          type: ["string", "null"]
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        avatarUrl:
+          type: ["string", "null"]
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+    User:
+      type: object
+      required: [id, name, email, role, isActive, isOnline]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, agent, user]
+        empCode:
+          type: ["string", "null"]
+        mobile:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        isOnline:
+          type: boolean
+        mustChangePassword:
+          type: boolean
+        lastSeenAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+    UserInput:
+      type: object
+      required: [name, email, role]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, agent, user]
+        empCode:
+          type: string
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [admin, agent, user]
+        empCode:
+          type: string
+        isActive:
+          type: boolean
+        password:
+          type: string
+          minLength: 8
+    ConversationInput:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+    CreateGroupInput:
+      type: object
+      required: [title, memberIds]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        memberIds:
+          type: array
+          items:
+            type: integer
+        iconUrl:
+          type: string
+    UpdateGroupInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        iconUrl:
+          type: ["string", "null"]
+    AddGroupMemberInput:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+    Conversation:
+      type: object
+      required: [id, otherUser, unreadCount, updatedAt, mode, aiResponseCount, language, adminEscalated, type]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [caller, direct, group]
+        title:
+          type: ["string", "null"]
+        iconUrl:
+          type: ["string", "null"]
+        createdById:
+          type: ["integer", "null"]
+        members:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/User"
+        otherUser:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+        lastMessage:
+          oneOf:
+            - $ref: "#/components/schemas/Message"
+            - type: "null"
+        unreadCount:
+          type: integer
+        updatedAt:
+          type: string
+        mode:
+          type: string
+          enum: [ai, human]
+        selectedCategoryId:
+          type: ["integer", "null"]
+        escalationReason:
+          type: ["string", "null"]
+        aiResponseCount:
+          type: integer
+        language:
+          type: string
+        adminEscalated:
+          type: boolean
+        slaStatus:
+          type: string
+          enum: [open, resolved]
+        openedAt:
+          type: ["string", "null"]
+        firstResponseAt:
+          type: ["string", "null"]
+        awaitingReplySince:
+          type: ["string", "null"]
+        resolvedAt:
+          type: ["string", "null"]
+        archivedAt:
+          type: ["string", "null"]
+    SupportCategory:
+      type: object
+      required: [id, title, sortOrder, isActive, language, parentId, requiresInput]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        titleEn:
+          type: string
+        description:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        aiPrompt:
+          type: ["string", "null"]
+        requiresInput:
+          type: boolean
+        inputPrompt:
+          type: ["string", "null"]
+        language:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+    UpsertSupportCategoryInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        aiPrompt:
+          type: ["string", "null"]
+        requiresInput:
+          type: boolean
+        inputPrompt:
+          type: ["string", "null"]
+        language:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+    AiSettings:
+      type: object
+      required:
+        [aiEnabled, confidenceThreshold, maxAiResponses, autoEscalation]
+      properties:
+        aiEnabled:
+          type: boolean
+        systemPrompt:
+          type: ["string", "null"]
+        greetingMessage:
+          type: ["string", "null"]
+        confidenceThreshold:
+          type: integer
+        maxAiResponses:
+          type: integer
+        autoEscalation:
+          type: boolean
+        supportPhone:
+          type: ["string", "null"]
+        telegramChatIds:
+          type: ["string", "null"]
+        telegramBotUsername:
+          type: ["string", "null"]
+    SupportPhone:
+      type: object
+      required: []
+      properties:
+        phone:
+          type: ["string", "null"]
+    UpdateAiSettingsInput:
+      type: object
+      properties:
+        aiEnabled:
+          type: boolean
+        systemPrompt:
+          type: ["string", "null"]
+        greetingMessage:
+          type: ["string", "null"]
+        confidenceThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        maxAiResponses:
+          type: integer
+          minimum: 1
+        autoEscalation:
+          type: boolean
+        supportPhone:
+          type: ["string", "null"]
+        telegramChatIds:
+          type: ["string", "null"]
+    MessageTemplate:
+      type: object
+      required: [id, title, content, categoryId, kind]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        categoryId:
+          type: ["integer", "null"]
+        kind:
+          type: string
+          enum: [normal, opening, closing]
+    UpsertMessageTemplateInput:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        categoryId:
+          type: ["integer", "null"]
+    SelectCategoryInput:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+        customText:
+          type: string
+        language:
+          type: string
+          minLength: 2
+          maxLength: 10
+    SetLanguageInput:
+      type: object
+      required: [language]
+      properties:
+        language:
+          type: string
+          minLength: 2
+          maxLength: 10
+    EscalateInput:
+      type: object
+      properties:
+        reason:
+          type: string
+    MessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+        attachmentUrl:
+          type: string
+        attachmentType:
+          type: string
+        attachmentName:
+          type: string
+        encrypted:
+          type: boolean
+        envelopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageEnvelopeInput"
+    MessageEnvelopeInput:
+      type: object
+      required: [userId, type, body]
+      properties:
+        userId:
+          type: integer
+        type:
+          type: integer
+        body:
+          type: string
+    Message:
+      type: object
+      required: [id, conversationId, senderId, isAi, status, createdAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        senderId:
+          type: ["integer", "null"]
+        senderName:
+          type: ["string", "null"]
+        isAi:
+          type: boolean
+        content:
+          type: ["string", "null"]
+        contentEn:
+          type: ["string", "null"]
+        encrypted:
+          type: boolean
+        envelope:
+          oneOf:
+            - $ref: "#/components/schemas/MessageEnvelopeOut"
+            - type: "null"
+        attachmentUrl:
+          type: ["string", "null"]
+        attachmentType:
+          type: ["string", "null"]
+        attachmentName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [sent, delivered, read]
+        createdAt:
+          type: string
+    MessageEnvelopeOut:
+      type: object
+      required: [type, body]
+      properties:
+        type:
+          type: integer
+        body:
+          type: string
+    E2eePublishKeysInput:
+      type: object
+      required:
+        [registrationId, identityKey, signedPrekeyId, signedPrekeyPub, signedPrekeySignature]
+      properties:
+        registrationId:
+          type: integer
+        identityKey:
+          type: string
+        signedPrekeyId:
+          type: integer
+        signedPrekeyPub:
+          type: string
+        signedPrekeySignature:
+          type: string
+        oneTimePrekeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/E2eeOneTimePrekeyInput"
+    E2eeOneTimePrekeyInput:
+      type: object
+      required: [keyId, pubKey]
+      properties:
+        keyId:
+          type: integer
+        pubKey:
+          type: string
+    E2eeKeyStatus:
+      type: object
+      required: [published, oneTimePrekeyCount]
+      properties:
+        published:
+          type: boolean
+        registrationId:
+          type: ["integer", "null"]
+        identityKey:
+          type: ["string", "null"]
+        oneTimePrekeyCount:
+          type: integer
+    E2eeBundle:
+      type: object
+      required:
+        [userId, registrationId, identityKey, signedPrekeyId, signedPrekeyPub, signedPrekeySignature]
+      properties:
+        userId:
+          type: integer
+        registrationId:
+          type: integer
+        identityKey:
+          type: string
+        signedPrekeyId:
+          type: integer
+        signedPrekeyPub:
+          type: string
+        signedPrekeySignature:
+          type: string
+        preKeyId:
+          type: ["integer", "null"]
+        preKeyPub:
+          type: ["string", "null"]
+    FileUploadInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    UploadedFile:
+      type: object
+      required: [url, name, type, size]
+      properties:
+        url:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        size:
+          type: integer
+    Call:
+      type: object
+      required: [id, caller, callee, status, startedAt]
+      properties:
+        id:
+          type: integer
+        caller:
+          $ref: "#/components/schemas/User"
+        callee:
+          $ref: "#/components/schemas/User"
+        status:
+          type: string
+          enum: [missed, answered, rejected]
+        startedAt:
+          type: string
+        endedAt:
+          type: ["string", "null"]
+        durationSeconds:
+          type: ["integer", "null"]
+    AdminConversation:
+      type: object
+      required: [id, userA, userB, updatedAt, language, adminEscalated]
+      properties:
+        id:
+          type: integer
+        userA:
+          $ref: "#/components/schemas/User"
+        userB:
+          $ref: "#/components/schemas/User"
+        lastMessage:
+          oneOf:
+            - $ref: "#/components/schemas/Message"
+            - type: "null"
+        updatedAt:
+          type: string
+        language:
+          type: string
+        adminEscalated:
+          type: boolean
+        escalationReason:
+          type: ["string", "null"]
+        selectedCategoryId:
+          type: ["integer", "null"]
+        slaStatus:
+          type: string
+          enum: [open, resolved]
+        openedAt:
+          type: ["string", "null"]
+        firstResponseAt:
+          type: ["string", "null"]
+        awaitingReplySince:
+          type: ["string", "null"]
+        resolvedAt:
+          type: ["string", "null"]
+    SlaSettings:
+      type: object
+      required: [firstResponseMins, waitingReplyMins, resolutionHours, updatedAt]
+      properties:
+        firstResponseMins:
+          type: integer
+        waitingReplyMins:
+          type: integer
+        resolutionHours:
+          type: integer
+        updatedAt:
+          type: string
+    SlaSettingsInput:
+      type: object
+      properties:
+        firstResponseMins:
+          type: integer
+          minimum: 1
+        waitingReplyMins:
+          type: integer
+          minimum: 1
+        resolutionHours:
+          type: integer
+          minimum: 1
+    SlaBreach:
+      type: object
+      required: [id, conversationId, kind, referenceAt, breachedAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        kind:
+          type: string
+          enum: [first_response, waiting, resolution]
+        customerName:
+          type: ["string", "null"]
+        referenceAt:
+          type: string
+        breachedAt:
+          type: string
+    SlaReport:
+      type: object
+      required: [settings, openCount, resolvedCount, breachTotals, recentBreaches]
+      properties:
+        settings:
+          $ref: "#/components/schemas/SlaSettings"
+        openCount:
+          type: integer
+        resolvedCount:
+          type: integer
+        avgFirstResponseSecs:
+          type: ["integer", "null"]
+        avgResolutionSecs:
+          type: ["integer", "null"]
+        breachTotals:
+          type: object
+          required: [firstResponse, waiting, resolution]
+          properties:
+            firstResponse:
+              type: integer
+            waiting:
+              type: integer
+            resolution:
+              type: integer
+        recentBreaches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlaBreach"
+    StatsSummary:
+      type: object
+      required: [totalUsers, totalAgents, totalAdmins, messagesToday, callsToday, onlineUsers]
+      properties:
+        totalUsers:
+          type: integer
+        totalAgents:
+          type: integer
+        totalAdmins:
+          type: integer
+        messagesToday:
+          type: integer
+        callsToday:
+          type: integer
+        onlineUsers:
+          type: integer
+        activeSupportTeam:
+          type: integer
+        todayTotalChat:
+          type: integer
+        totalUnreadMessages:
+          type: integer
+        totalUniqueChats:
+          type: integer
+        todayTotalRecordings:
+          type: integer
+        totalCommunication:
+          type: integer
