@@ -2,7 +2,7 @@
 
 SkyTalk is a real-time customer support chat application. Customers land in the app through an SSO link from the host website and are instantly connected to a support agent. Staff (agents & admins) get a full workspace: live chats, AI-assisted replies, voice/video calls, end-to-end encrypted internal chats, SLA tracking, ticket-based chat history, and an admin monitoring panel.
 
-**Live app:** https://chatappSpace.replit.app
+**Live app:** https://skytalk.site 
 
 ---
 
